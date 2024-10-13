@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regresión Lineal</title>
+    <style>
+        #loader {
+            display: none;
+            font-size: 20px;
+            color: blue;
+        }
+    </style>
+</head>
+<body>
+    <h1>Regresión Lineal por Descenso de Gradiente</h1>
+
+    <h2>Ingrese 5 valores para Precio (x) y Venta (y)</h2>
+    <div id="data-inputs">
+        <div>
+            <label for="x1">Precio (x1):</label>
+            <input type="number" id="x1" placeholder="Ingresa precio 1" />
+            <label for="y1">Venta (y1):</label>
+            <input type="number" id="y1" placeholder="Ingresa venta 1" />
+        </div>
+        <div>
+            <label for="x2">Precio (x2):</label>
+            <input type="number" id="x2" placeholder="Ingresa precio 2" />
+            <label for="y2">Venta (y2):</label>
+            <input type="number" id="y2" placeholder="Ingresa venta 2" />
+        </div>
+        <div>
+            <label for="x3">Precio (x3):</label>
+            <input type="number" id="x3" placeholder="Ingresa precio 3" />
+            <label for="y3">Venta (y3):</label>
+            <input type="number" id="y3" placeholder="Ingresa venta 3" />
+        </div>
+        <div>
+            <label for="x4">Precio (x4):</label>
+            <input type="number" id="x4" placeholder="Ingresa precio 4" />
+            <label for="y4">Venta (y4):</label>
+            <input type="number" id="y4" placeholder="Ingresa venta 4" />
+        </div>
+        <div>
+            <label for="x5">Precio (x5):</label>
+            <input type="number" id="x5" placeholder="Ingresa precio 5" />
+            <label for="y5">Venta (y5):</label>
+            <input type="number" id="y5" placeholder="Ingresa venta 5" />
+        </div>
+    </div>
+    
+    <div>
+        <label for="m">Valor inicial de m:</label>
+        <input type="number" id="m" placeholder="Valor inicial de m" step="any" />
+        <label for="b">Valor inicial de b:</label>
+        <input type="number" id="b" placeholder="Valor inicial de b" step="any" />
+        <label for="tasa">Tasa de aprendizaje (α):</label>
+        <input type="number" id="tasa" placeholder="Tasa de aprendizaje" step="any" />
+        <label for="interacciones">Número de interacciones:</label>
+        <input type="number" id="interacciones" placeholder="Número de interacciones" />
+    </div>
+
+    <button onclick="realizarCalculos()">Calcular</button>
+    <div id="loader">Cargando...</div>
+    <pre id="resultados"></pre>
+
+    <script>
+        function realizarCalculos() {
+            const loader = document.getElementById("loader");
+            loader.style.display = "block";
+        
+            // Obtener los valores de entrada
+            const x = [
+                parseFloat(document.getElementById("x1").value),
+                parseFloat(document.getElementById("x2").value),
+                parseFloat(document.getElementById("x3").value),
+                parseFloat(document.getElementById("x4").value),
+                parseFloat(document.getElementById("x5").value)
+            ];
+            const y = [
+                parseFloat(document.getElementById("y1").value),
+                parseFloat(document.getElementById("y2").value),
+                parseFloat(document.getElementById("y3").value),
+                parseFloat(document.getElementById("y4").value),
+                parseFloat(document.getElementById("y5").value)
+            ];
+            let m = parseFloat(document.getElementById("m").value);
+            let b = parseFloat(document.getElementById("b").value);
+            const tasa = parseFloat(document.getElementById("tasa").value);
+            const maxIteraciones = parseInt(document.getElementById("interacciones").value);
+        
+            // Tolerancia fija para la convergencia
+            const toleranciaConvergencia = 1e-6;
+        
+            let iter = 0;
+            const resultados = [];
+            let regularizado = false;
+            let iteracionRegularizacion = -1;
+            let mRegularizado, bRegularizado;
+        
+            while (iter < maxIteraciones && !isNaN(m) && !isNaN(b)) {
+                iter++;
+        
+                let mAnterior = m;
+                let bAnterior = b;
+        
+                // Calcular las predicciones
+                const predicciones = x.map(val => Number((m * val + b).toFixed(8)));
+                
+                // Calcular los gradientes
+                const gradienteM = -2 * x.reduce((sum, val, i) => sum + (val * (y[i] - predicciones[i])), 0) / x.length;
+                const gradienteB = -2 * y.reduce((sum, val, i) => sum + (val - predicciones[i]), 0) / y.length;
+        
+                // Actualizar m y b con un límite máximo para evitar overflow
+                const maxValor = Number.MAX_SAFE_INTEGER;
+                m = Math.min(maxValor, Math.max(-maxValor, Number((m - tasa * gradienteM).toFixed(8))));
+                b = Math.min(maxValor, Math.max(-maxValor, Number((b - tasa * gradienteB).toFixed(8))));
+        
+                resultados.push(`Iteración ${iter}: m = ${formatNumber(m)}, b = ${formatNumber(b)}`);
+        
+                // Verificar si los valores se han regularizado (cambio menor a la tolerancia)
+                if (!regularizado) {
+                    if (Math.abs((m - mAnterior) / mAnterior) < toleranciaConvergencia || Math.abs((b - bAnterior) / bAnterior) < toleranciaConvergencia) {
+                        regularizado = true;
+                        iteracionRegularizacion = iter;
+                        mRegularizado = m;
+                        bRegularizado = b;
+                    } else if (iter > 10 && Math.abs((m - mAnterior) / mAnterior) < 0.01 && Math.abs((b - bAnterior) / bAnterior) < 0.01) {
+                        console.log("Se alcanza la condición de regularización alternativa");
+                        regularizado = true;
+                        iteracionRegularizacion = iter;
+                        mRegularizado = m;
+                        bRegularizado = b;
+                    }
+                }
+            }
+        
+            loader.style.display = "none";
+            const mensajeFinal = `Resultados Finales:\nm (pendiente): ${formatNumber(m)}, b (intersección): ${formatNumber(b)}\n`;
+            const iteracionesRealizadas = `Iteraciones realizadas: ${iter}\n`;
+            const regularizacionAlcanzada = `Regularización alcanzada: ${regularizado ? "Sí" : "No"}\n`;
+            const mensajeRegularizacion = regularizado 
+                ? `Se regularizó en la iteración: ${iteracionRegularizacion}\nValores regulares:\nm = ${formatNumber(mRegularizado)}, b = ${formatNumber(bRegularizado)}\n` 
+                : "No se regularizó en el límite de iteraciones.\n";
+            
+            document.getElementById("resultados").innerText = mensajeFinal + iteracionesRealizadas + regularizacionAlcanzada + mensajeRegularizacion + resultados.join('\n');
+        }
+        
+        function formatNumber(num) {
+            if (isNaN(num)) return "NaN";
+            return num.toExponential().replace(/e[+-]/, 'e').split('e')[0].slice(0, 9);
+        }
+            </script>
+</body>
+</html>
